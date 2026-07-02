@@ -1,11 +1,27 @@
 const std = @import("std");
 const Io = std.Io;
+const rl = @import("raylib");
 
 const flexuizig = @import("flexuizig");
 
 pub fn main(init: std.process.Init) !void {
     // Prints to stderr, unbuffered, ignoring potential errors.
     std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+
+    const screenWidth = 800;
+    const screenHeight = 600;
+
+    rl.initWindow(screenWidth, screenHeight, "raylib-zig");
+    defer rl.closeWindow();
+
+    rl.setTargetFPS(60); // Set window to 60 FPS.
+
+    while (!rl.windowShouldClose()) {
+        rl.beginDrawing();
+        defer rl.endDrawing();
+        rl.clearBackground(.white);
+        rl.drawText("Test Window", 190, 200, 20, .light_gray);
+    }
 
     // This is appropriate for anything that lives as long as the process.
     const arena: std.mem.Allocator = init.arena.allocator();
