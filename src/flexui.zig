@@ -1,6 +1,6 @@
 const component    = @import("component.zig");
 const button       = @import("button.zig");
-const button_style = @import("button.zig");
+const button_style = @import("button_style.zig");
 const text_input   = @import("text_input.zig");
 const flex_layout   = @import("flexlayout.zig");
 

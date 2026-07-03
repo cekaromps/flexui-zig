@@ -33,21 +33,21 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(lib);
 
-   //const build_examples = b.option(bool, "examples", "Build examples") orelse true;
-   //if (build_examples) {
-   //    const example_module = b.createModule(.{
-   //        .root_source_file = b.path("examples/basic/main.zig"),
-   //        .target = target,
-   //        .optimize = optimize,
-   //    });
-   //    example_module.addImport("flexui", flexui_module);
-   //    example_module.addImport("raylib", raylib);
-   //    example_module.linkLibrary(raylib_artifact);
+   const build_examples = b.option(bool, "examples", "Build examples") orelse true;
+   if (build_examples) {
+       const example_module = b.createModule(.{
+           .root_source_file = b.path("examples/basic/main.zig"),
+           .target = target,
+           .optimize = optimize,
+       });
+       example_module.addImport("flexui", flexui_module);
+       example_module.addImport("raylib", raylib);
+       example_module.linkLibrary(raylib_artifact);
 
-   //    const example_exe = b.addExecutable(.{
-   //        .name = "flexui_basic_example",
-   //        .root_module = example_module,
-   //    });
-   //    b.installArtifact(example_exe);
-   //}
+       const example_exe = b.addExecutable(.{
+           .name = "flexui_basic_example",
+           .root_module = example_module,
+       });
+       b.installArtifact(example_exe);
+   }
 }

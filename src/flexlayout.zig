@@ -1,10 +1,11 @@
 const std = @import("std");
 const rl = @import("raylib");
-const component = @import("component.zig");
+const component_mod = @import("component.zig");
+const Component = component_mod.Component;
 
-const FlexDirection = enum { Row, Column };
-const FlexAlign     = enum { Start, Center, End, Stretch };
-const FlexJustify   = enum { Start, Center, End, SpaceBetween };
+pub const FlexDirection = enum { Row, Column };
+pub const FlexAlign     = enum { Start, Center, End, Stretch };
+pub const FlexJustify   = enum { Start, Center, End, SpaceBetween };
 
 const LayoutResult = struct {
     rect: rl.Rectangle,
@@ -15,8 +16,11 @@ pub const FlexChild = struct {
     fixedH: f32,
     grow: f32 = 0,
     visible: bool = true,
-    draw: ?*const fn (rl.Rectangle) void = null,
-    handleInput: ?*const fn (rl.Rectangle) void = null,
+    // The bound widget instance (Button, TextInput, ...) wrapped as a
+    // Component. This is what lets a fixed set of fn pointers on
+    // Component dispatch to *this specific* widget - a plain function
+    // pointer here couldn't carry that per-instance context.
+    component: ?Component = null,
 };
 
 pub const FlexBox = struct {
@@ -95,24 +99,24 @@ pub const FlexBox = struct {
             const cross_fixed: f32 = if (is_row) c.fixedH else c.fixedW;
             const cross_size: f32 = if (self.align_items == .Stretch or cross_fixed < 0)
                 cross_axis_size - self.padding * 2
-                else
-                    cross_fixed;
+            else
+                cross_fixed;
 
-                var cross_pos: f32 = if (is_row) bounds.y + self.padding else bounds.x + self.padding;
-                if (self.align_items == .Center) {
-                    cross_pos += (cross_axis_size + self.padding * 2 - cross_size) / 2;
-                } else if (self.align_items == .End) {
-                    cross_pos += (cross_axis_size + self.padding * 2 - cross_size);
-                }
+            var cross_pos: f32 = if (is_row) bounds.y + self.padding else bounds.x + self.padding;
+            if (self.align_items == .Center) {
+                cross_pos += (cross_axis_size + self.padding * 2 - cross_size) / 2;
+            } else if (self.align_items == .End) {
+                cross_pos += (cross_axis_size + self.padding * 2 - cross_size);
+            }
 
-                const childRect: rl.Rectangle = if (is_row)
-                    .{ .x = cursor, .y = cross_pos, .width = main_size, .height = cross_size }
-                else
-                    .{ .x = cross_pos, .y = cursor, .width = cross_size, .height = main_size };
+            const childRect: rl.Rectangle = if (is_row)
+                .{ .x = cursor, .y = cross_pos, .width = main_size, .height = cross_size }
+            else
+                .{ .x = cross_pos, .y = cursor, .width = cross_size, .height = main_size };
 
-                try results.append(.{ .rect = childRect });
+            try results.append(.{ .rect = childRect });
 
-                cursor += main_size + self.gap + space_between_extra;
+            cursor += main_size + self.gap + space_between_extra;
         }
 
         return results.toOwnedSlice();
@@ -128,7 +132,10 @@ pub const FlexBox = struct {
 
         for (self.children.items, results) |child, result| {
             if (child.visible) {
-                if (child.draw) |draw| draw(result.rect);
+                if (child.component) |c| {
+                    c.setRectFn(c.ptr, result.rect);
+                    c.drawFn(c.ptr);
+                }
             }
         }
     }
@@ -139,9 +146,11 @@ pub const FlexBox = struct {
 
         for (self.children.items, results) |child, result| {
             if (child.visible) {
-                if (child.handleInput) |handleInputFn| handleInputFn(result.rect);
+                if (child.component) |c| {
+                    c.setRectFn(c.ptr, result.rect);
+                    c.handleInputFn(c.ptr);
+                }
             }
         }
     }
 };
-
