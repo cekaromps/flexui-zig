@@ -12,84 +12,78 @@ manual vtable (a `*anyopaque` pointer plus a handful of function pointers)
     function for each one without knowing its concrete type ahead of time.
 
 ## Installation
-
-    Add it as a dependency in your `build.zig.zon`:
-
-    ```zig
-    .dependencies = .{
-        .flexui = .{
-            .url = "git+https://github.com/cekaromps/flexui-zig#<commit>",
-                .hash = "...", // zig will tell you the correct hash on first build
-        },
+Add it as a dependency in your `build.zig.zon`:
+```zig
+.dependencies = .{
+    .flexui = .{
+        .url = "git+https://github.com/cekaromps/flexui-zig#<commit>",
+            .hash = "...", // zig will tell you the correct hash on first build
     },
-    ```
+},
+```
+Then wire it into `build.zig`:
+```zig
+const flexui_dep = b.dependency("flexui", .{ .target = target, .optimize = optimize });
+exe.root_module.addImport("flexui", flexui_dep.module("flexui"));
+```
 
-    Then wire it into `build.zig`:
-
-    ```zig
-    const flexui_dep = b.dependency("flexui", .{ .target = target, .optimize = optimize });
-    exe.root_module.addImport("flexui", flexui_dep.module("flexui"));
-    ```
-
-    `flexui`'s own `build.zig` already depends on and links `raylib-zig` for
-    you, so you don't need to add that dependency yourself unless you also want
-    to call raylib functions directly in your own code (which you almost
-            certainly do, for `initWindow`, the main loop, etc.) — in that case add
-    `raylib_zig` as its own dependency too, the same way `flexui`'s `build.zig`
-    does it.
+`flexui`'s own `build.zig` already depends on and links `raylib-zig` for
+you, so you don't need to add that dependency yourself unless you also want
+to call raylib functions directly in your own code (which you almost
+        certainly do, for `initWindow`, the main loop, etc.) — in that case add
+`raylib_zig` as its own dependency too, the same way `flexui`'s `build.zig`
+does it.
 
 ## Quick start
+```zig
+const std = @import("std");
+const rl = @import("raylib");
+const flexui = @import("flexui");
 
-    ```zig
-    const std = @import("std");
-    const rl = @import("raylib");
-    const flexui = @import("flexui");
+pub fn main() !void {
+    const allocator = std.heap.page_allocator;
 
-    pub fn main() !void {
-        const allocator = std.heap.page_allocator;
+    rl.initWindow(800, 600, "my app");
+    defer rl.closeWindow();
+    rl.setTargetFPS(60);
 
-        rl.initWindow(800, 600, "my app");
-        defer rl.closeWindow();
-        rl.setTargetFPS(60);
+    const font = try rl.getFontDefault();
 
-        const font = try rl.getFontDefault();
+    var name_input = flexui.TextInput.init(allocator, font);
+    defer name_input.deinit();
+    name_input.placeholder = "Type something...";
 
-        var name_input = flexui.TextInput.init(allocator, font);
-        defer name_input.deinit();
-        name_input.placeholder = "Type something...";
+    var my_btn = flexui.Button{
+        .label = "Click me",
+            .font = font,
+            .onClick = onClick,
+    };
 
-        var my_btn = flexui.Button{
-            .label = "Click me",
-                .font = font,
-                .onClick = onClick,
+    var layout = flexui.FlexBox.init(allocator);
+    defer layout.deinit();
+    layout.direction = .Column;
+    layout.gap = 16;
+    layout.padding = 40;
+
+    try layout.add(.{ .fixedW = -1, .fixedH = 50, .component = name_input.component() });
+    try layout.add(.{ .fixedW = 200, .fixedH = 50, .component = my_btn.component() });
+
+    while (!rl.windowShouldClose()) {
+        const bounds = rl.Rectangle{
+            .x = 0, .y = 0,
+                .width = @floatFromInt(rl.getScreenWidth()),
+                .height = @floatFromInt(rl.getScreenHeight()),
         };
 
-        var layout = flexui.FlexBox.init(allocator);
-        defer layout.deinit();
-        layout.direction = .Column;
-        layout.gap = 16;
-        layout.padding = 40;
+        try layout.handleInput(bounds);
 
-        try layout.add(.{ .fixedW = -1, .fixedH = 50, .component = name_input.component() });
-        try layout.add(.{ .fixedW = 200, .fixedH = 50, .component = my_btn.component() });
+        rl.beginDrawing();
+        defer rl.endDrawing();
+        rl.clearBackground(.{ .r = 20, .g = 20, .b = 20, .a = 255 });
 
-        while (!rl.windowShouldClose()) {
-            const bounds = rl.Rectangle{
-                .x = 0, .y = 0,
-                    .width = @floatFromInt(rl.getScreenWidth()),
-                    .height = @floatFromInt(rl.getScreenHeight()),
-            };
-
-            try layout.handleInput(bounds);
-
-            rl.beginDrawing();
-            defer rl.endDrawing();
-            rl.clearBackground(.{ .r = 20, .g = 20, .b = 20, .a = 255 });
-
-            try layout.layout(bounds);
-        }
+        try layout.layout(bounds);
     }
-
+}
 fn onClick(ctx: ?*anyopaque) void {
     _ = ctx;
     std.debug.print("clicked!\n", .{});
@@ -296,7 +290,6 @@ pub fn component(self: *MyWidget) component_mod.Component {
 ```
 
 ## Building
-
 ```
 zig build                        # builds the flexui static library only
 zig build -Dexamples=true        # also builds examples/basic
