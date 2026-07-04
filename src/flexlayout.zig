@@ -30,18 +30,17 @@ pub const FlexBox = struct {
 
     gap: f32 = 8.0,
     padding: f32 = 0.0,
-    children: std.ArrayList(FlexChild),
+    children: std.ArrayList(FlexChild) = .empty,
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) FlexBox {
         return .{
-            .children = std.ArrayList(FlexChild).init(allocator),
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *FlexBox) void {
-        self.children.deinit();
+        self.children.deinit(self.allocator);
     }
 
     pub fn computeLayout(self: *FlexBox, bounds: rl.Rectangle) ![]LayoutResult {
@@ -84,8 +83,8 @@ pub const FlexBox = struct {
             space_between_extra = remaining / (n - 1);
         }
 
-        var results = std.ArrayList(LayoutResult).init(self.allocator);
-        errdefer results.deinit();
+        var results: std.ArrayList(LayoutResult) = .empty;
+        errdefer results.deinit(self.allocator);
 
         for (self.children.items) |c| {
             if (!c.visible) continue;
@@ -114,16 +113,16 @@ pub const FlexBox = struct {
             else
                 .{ .x = cross_pos, .y = cursor, .width = cross_size, .height = main_size };
 
-            try results.append(.{ .rect = childRect });
+            try results.append(self.allocator, .{ .rect = childRect });
 
             cursor += main_size + self.gap + space_between_extra;
         }
 
-        return results.toOwnedSlice();
+        return results.toOwnedSlice(self.allocator);
     }
 
     pub fn add(self: *FlexBox, child: FlexChild) !void {
-        try self.children.append(child);
+        try self.children.append(self.allocator, child);
     }
 
     pub fn layout(self: *FlexBox, bounds: rl.Rectangle) !void {

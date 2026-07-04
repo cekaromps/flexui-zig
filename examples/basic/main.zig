@@ -26,15 +26,19 @@ fn onQuitClick(ctx: ?*anyopaque) void {
 }
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+    // page_allocator instead of GeneralPurposeAllocator/DebugAllocator
+    // to sidestep stdlib naming churn between Zig versions - fine for a
+    // short-lived example, but for anything longer-running you'd want an
+    // allocator with leak detection (check `zig std` for whatever your
+    // Zig version currently calls it if you want that).
+    const allocator = std.heap.page_allocator;
 
-    rl.InitWindow(800, 600, "flexui basic example");
-    defer rl.CloseWindow();
-    rl.SetTargetFPS(60);
+    rl.initWindow(800, 600, "flexui basic example");
+    defer rl.closeWindow();
+    rl.setTargetFPS(60);
 
-    const font = rl.GetFontDefault();
+    // getFontDefault() returns an error union in this binding.
+    const font = try rl.getFontDefault();
 
     var name_input = flexui.TextInput.init(allocator, font);
     defer name_input.deinit();
@@ -75,26 +79,26 @@ pub fn main() !void {
     try layout.add(.{ .fixedW = 200, .fixedH = 50, .component = greet_btn.component() });
     try layout.add(.{ .fixedW = 200, .fixedH = 50, .component = quit_btn.component() });
 
-    while (!rl.WindowShouldClose() and !state.should_quit) {
+    while (!rl.windowShouldClose() and !state.should_quit) {
         const bounds = rl.Rectangle{
             .x = 0,
             .y = 0,
-            .width = @floatFromInt(rl.GetScreenWidth()),
-            .height = @floatFromInt(rl.GetScreenHeight()),
+            .width = @floatFromInt(rl.getScreenWidth()),
+            .height = @floatFromInt(rl.getScreenHeight()),
         };
 
         try layout.handleInput(bounds);
 
-        rl.BeginDrawing();
-        defer rl.EndDrawing();
-        rl.ClearBackground(.{ .r = 20, .g = 20, .b = 20, .a = 255 });
+        rl.beginDrawing();
+        defer rl.endDrawing();
+        rl.clearBackground(.{ .r = 20, .g = 20, .b = 20, .a = 255 });
 
         try layout.layout(bounds);
 
-        const msg_size = rl.MeasureTextEx(font, state.message, 24, 1);
-        rl.DrawTextEx(font, state.message, .{
+        const msg_size = rl.measureTextEx(font, state.message, 24, 1);
+        rl.drawTextEx(font, state.message, .{
             .x = (bounds.width - msg_size.x) / 2.0,
             .y = bounds.height - 80,
-        }, 24, 1, rl.WHITE);
+        }, 24, 1, rl.Color.white);
     }
 }
